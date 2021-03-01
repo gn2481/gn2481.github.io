@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>Rails 中 includes 跟 joins 的差別</title>
+    <url>/2021/02/25/Rails-%E4%B8%AD-includes-%E8%B7%9F-joins-%E7%9A%84%E5%B7%AE%E5%88%A5/</url>
+    <content><![CDATA[<h1 id="Rails-中-includes-跟-joins-的差別"><a href="#Rails-中-includes-跟-joins-的差別" class="headerlink" title="Rails 中 includes 跟 joins 的差別"></a>Rails 中 <code>includes</code> 跟 <code>joins</code> 的差別</h1><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近幫忙在調校網站 n+1 的問題，所以想來寫個筆記，分成兩篇。</p>
+<ol>
+<li><a href="">Rails 中 <code>includes</code> 跟 <code>joins</code> 的差別</a></li>
+<li><a href="">Rails 的 <code>length</code>、<code>count</code>、<code>size</code> 差別？</a></li>
+</ol>
+<h2 id="何謂-N-1-問題"><a href="#何謂-N-1-問題" class="headerlink" title="何謂 N+1 問題"></a>何謂 <code>N+1</code> 問題</h2><p>在 Rails 中建立 model 的資料關聯十分的容易，但也是因為建立方便，所以很容易就會寫出效能差的程式碼，每一次進出 Database 都會消耗很大的效能，到底何謂 <code>N+1</code> 問題呢？<br>舉個例子：</p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># User</span></span><br><span class="line">has_many <span class="symbol">:orders</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#Order</span></span><br><span class="line">belongs_to <span class="symbol">:user</span></span><br></pre></td></tr></table></figure>
+<p>當我們想在畫面上印出所有 <code>orders</code> 的 <code>user.email</code>，此時所造成的 <code>query</code> 就會長這樣：</p>
+<p><img src="https://i.imgur.com/JyR4HcK.png"></p>
+<p>上面的寫法就會先將所有 <code>orders</code>，找出來，在針對每一筆的 <code>order.user_id</code> 去查找<code>users</code>的表，共有 9 筆，所以找 9 次。</p>
+<p>若有 n 筆就找 n 次，再加上一開始找出所有 <code>orders</code> 的 <code>query</code> ，就變成了 <code>n+1</code>。</p>
+<p>若資料量稍微龐大一點，效能就會變差。</p>
+<h2 id="請善用-includes"><a href="#請善用-includes" class="headerlink" title="請善用 includes"></a>請善用 <code>includes</code></h2><p>而 Rails 很貼心的有個語法可以讓我們避免這樣的問題，<code>includes</code>。<br>若將 <code>orders = Order.all</code> 改成 <code>orders = Order.all.includes(:user)</code><br><img src="https://i.imgur.com/mMlBCoB.png"></p>
+<p>那在最一開始撈出所有 order 時，會順便一起把相對應的 user 找出來，此時繼續輸入：</p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line">orders.each <span class="keyword">do</span> <span class="params">|order|</span></span><br><span class="line">  order.user.email</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>這時就不會進到 Database 中查詢。<br>從 n+1 變成 1+1 👍</p>
+<h3 id="includes-也支援巢狀關聯-使用-hash"><a href="#includes-也支援巢狀關聯-使用-hash" class="headerlink" title="includes 也支援巢狀關聯 (使用 hash)"></a><code>includes</code> 也支援巢狀關聯 (使用 hash)</h3><p>如果除了 <code>user</code> ，還想一起找出跟 <code>user</code> 有關聯的 model 可以使用 hash 的寫法</p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 以 profile 為例</span></span><br><span class="line"><span class="comment"># User has_many profiles</span></span><br><span class="line"></span><br><span class="line">orders = Order.all.includes(<span class="symbol">user:</span> [ <span class="symbol">:profile</span> ])</span><br><span class="line"><span class="comment"># 可以順便把 profile 撈出來</span></span><br></pre></td></tr></table></figure>
+
+
+<h2 id="還有一個語法叫-joins"><a href="#還有一個語法叫-joins" class="headerlink" title="還有一個語法叫 joins"></a>還有一個語法叫 <code>joins</code></h2><p>除了 <code>includes</code> 之外，還有一個很像的語法叫做 <code>joins</code>，不過差別為 <code>joins</code> 是過濾 <code>model</code> 之間的關聯，像上方的寫法，在印出 <code>user.email</code> 的時候還是會產生查詢！</p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line">orders = Order.all.joins(<span class="symbol">:user</span>)</span><br><span class="line"><span class="comment"># 回傳具有 user_id 的 order</span></span><br></pre></td></tr></table></figure>
+<h4 id="而-has-many-又會跟-belongs-to-的情境有不一樣的回傳結果"><a href="#而-has-many-又會跟-belongs-to-的情境有不一樣的回傳結果" class="headerlink" title="而 has_many 又會跟 belongs_to 的情境有不一樣的回傳結果"></a>而 <code>has_many</code> 又會跟 <code>belongs_to</code> 的情境有不一樣的回傳結果</h4><figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># User has_many :orders</span></span><br><span class="line">user = User.joins(<span class="symbol">:orders</span>)</span><br></pre></td></tr></table></figure>
+<ul>
+<li>查詢所有具有 <code>user_id</code> 的 <code>order</code>，並回傳該 <code>order</code> 的 <code>user</code> ，若有很多 <code>order</code> 所屬同一個 <code>user</code>，則回傳值會包含大量同一名 <code>user</code> 的資料，可以用 <code>uniq</code> 處理。</li>
+</ul>
+<h2 id="來個總結！"><a href="#來個總結！" class="headerlink" title="來個總結！"></a>來個總結！</h2><p>簡單來說，若是要處理大量資料，會比較建議使用 <code>includes</code>，以避免 n+1 的問題，而 <code>joins</code> 的話，目前推論是需要對資料做關聯 model 的條件篩選，才會比較建議使用。</p>
+<hr>
+<h4 id="參考文章"><a href="#參考文章" class="headerlink" title="參考文章"></a>參考文章</h4><p><a href="https://adlerhsieh.com/blog/20141028-rails-include-join-avoid-n-1-query">Rails使用 include 和 join 避免 N+1 query</a></p>
+<p><a href="https://ihower.tw/rails/performance.html">Ruby on Rails 實戰聖經 - 網站效能</a></p>
+<p><a href="https://apidock.com/rails/ActiveRecord/QueryMethods/includes">官方 API 文件</a></p>
+<p><a href="https://stackoverflow.com/questions/1208636/rails-include-vs-joins">stackoverflow</a></p>
+]]></content>
+      <tags>
+        <tag>rails</tag>
+      </tags>
+  </entry>
+</search>

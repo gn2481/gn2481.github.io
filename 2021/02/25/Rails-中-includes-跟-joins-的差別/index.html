@@ -30,7 +30,7 @@
 <meta property="og:image" content="https://i.imgur.com/JyR4HcK.png">
 <meta property="og:image" content="https://i.imgur.com/mMlBCoB.png">
 <meta property="article:published_time" content="2021-02-25T06:47:33.000Z">
-<meta property="article:modified_time" content="2021-02-25T06:59:43.829Z">
+<meta property="article:modified_time" content="2021-04-08T13:34:11.827Z">
 <meta property="article:author" content="gn2481">
 <meta property="article:tag" content="rails">
 <meta name="twitter:card" content="summary">
@@ -222,9 +222,24 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">發表於</span>
-              
 
-              <time title="創建時間：2021-02-25 14:47:33 / 修改時間：14:59:43" itemprop="dateCreated datePublished" datetime="2021-02-25T14:47:33+08:00">2021-02-25</time>
+              <time title="創建時間：2021-02-25 14:47:33" itemprop="dateCreated datePublished" datetime="2021-02-25T14:47:33+08:00">2021-02-25</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新於</span>
+                <time title="修改時間：2021-04-08 21:34:11" itemprop="dateModified" datetime="2021-04-08T21:34:11+08:00">2021-04-08</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分類於</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/rails/" itemprop="url" rel="index"><span itemprop="name">rails</span></a>
+                </span>
             </span>
 
           
@@ -298,6 +313,7 @@
 
           </div>
           
+    <div class="comments" id="gitalk-container"></div>
 
 <script>
   window.addEventListener('tabs:register', () => {
@@ -364,9 +380,17 @@
           <span class="site-state-item-name">文章</span>
         </a>
       </div>
-      <div class="site-state-item site-state-tags">
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
         <span class="site-state-item-count">1</span>
-        <span class="site-state-item-name">標籤</span>
+        <span class="site-state-item-name">分類</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">標籤</span></a>
       </div>
   </nav>
 </div>
@@ -461,6 +485,26 @@
   
 
   
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : '1ca6c44c6bce47e35140',
+      clientSecret: '8cd964c382e6194e1cbcc0066ead810036cd82ab',
+      repo        : 'gn2481.github.io',
+      owner       : 'gn2481',
+      admin       : ['gn2481'],
+      id          : 'cd9a4a7a70afb62f562767fa5403a2cd',
+        language: '',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
 
 </body>
 </html>

@@ -36,6 +36,9 @@
 <p><a href="https://apidock.com/rails/ActiveRecord/QueryMethods/includes">官方 API 文件</a></p>
 <p><a href="https://stackoverflow.com/questions/1208636/rails-include-vs-joins">stackoverflow</a></p>
 ]]></content>
+      <categories>
+        <category>rails</category>
+      </categories>
       <tags>
         <tag>rails</tag>
       </tags>

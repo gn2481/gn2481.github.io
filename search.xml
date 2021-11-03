@@ -37,10 +37,145 @@
 <p><a href="https://stackoverflow.com/questions/1208636/rails-include-vs-joins">stackoverflow</a></p>
 ]]></content>
       <categories>
-        <category>rails</category>
+        <category>Ruby on Rails</category>
       </categories>
       <tags>
-        <tag>rails</tag>
+        <tag>Ruby on Rails</tag>
+        <tag>n+1</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Feature Toggles</title>
+    <url>/2021/08/09/Feature-Toggles/</url>
+    <content><![CDATA[<h1 id="什麼是-feature-toggle？"><a href="#什麼是-feature-toggle？" class="headerlink" title="什麼是 feature toggle？"></a>什麼是 feature toggle？</h1><p>若一個功能要成功上線需有：<br><img src="https://i.imgur.com/ikSwJjG.png"></p>
+<hr>
+<p>一般開發方式大致分成下面幾種：</p>
+<p><strong>One branch</strong> <em>(最簡單的方式一定是通通在 master!)</em></p>
+<blockquote>
+<p>請在自己 side_project 上這樣做</p>
+</blockquote>
+<p>只在 master 上開發，程式必須等到功能開發完全才能 release，中途 release 會影響到現有、或別人做的功能。<br><img src="https://i.imgur.com/kCbpXQq.png"></p>
+<p>開發複雜度小很多，但真的沒有公司這樣用。</p>
+<hr>
+<p><strong>Feature Branch</strong></p>
+<blockquote>
+<p>為了協作開發，開發 A 功能的時候也能同時開發 B 功能，也不會影響到其他 release 的東西。</p>
+</blockquote>
+<p><img src="https://i.imgur.com/JJNaYvP.png"><br>開另一支分支，全部完成再 release，中途 release master 也不會影響到現有功能，但隨著功能的開發時間拉長，merge 回 master 的時候衝突可能很多，code_review 也會很大包，也有可能有重工的狀況。</p>
+<hr>
+<p><strong>trunk_base_flow</strong></p>
+<blockquote>
+<p>降低每個 commit 粒度，branch 的週期，merge 的時候更 easy</p>
+</blockquote>
+<p><img src="https://i.imgur.com/AKeir5a.png"></p>
+<p>merge 回 master 時不會一次要解很多衝突，code_review 方便，持續整合，加快迭代。</p>
+<div class="note info"><p>Q：但這樣不就把未完成的功能一起 release 出去了嗎？<br><strong>A：所以我們搭配 Feature Toggles/Flags ，來隱藏尚未完成的功能！</strong></p>
+</div>
+
+
+<h1 id="rails-的-Feature-Toggles"><a href="#rails-的-Feature-Toggles" class="headerlink" title="rails 的 Feature Toggles"></a>rails 的 Feature Toggles</h1><h2 id="Unleash"><a href="#Unleash" class="headerlink" title="Unleash"></a><a href="https://github.com/Unleash/unleash">Unleash</a></h2><blockquote>
+<p>👆<em>官方文件，請點標題</em></p>
+</blockquote>
+<p>文件詳細，但複雜度也很高，要另架一個 server，自己串接 API</p>
+<p><img src="https://i.imgur.com/jQRpQFh.png"></p>
+<h2 id="Flipper-and-Rollout"><a href="#Flipper-and-Rollout" class="headerlink" title="Flipper and  Rollout"></a><a href="https://github.com/jnunemaker/flipper">Flipper</a> and  <a href="https://github.com/fetlife/rollout">Rollout</a></h2><blockquote>
+<p>👆<em>官方文件，請點標題</em></p>
+</blockquote>
+<p>rollout 是仰賴 redis 去做開關的控制，而 Flipper 是可以指定你要用什麼方式去存取開關的資料。<br>基本做法都差不多，也都有另外的 ui 可以用，甚至可以指定誰可以執行、百分比釋出</p>
+<blockquote>
+<p>ps. Flipper 支援 rollout，也就是你可以用 Flipper 把 Rollout 包起來</p>
+</blockquote>
+<div class="note info"><p>開關有分兩種，一種就是很簡單的開跟關，另一種是可以依照百分比釋出的。</p>
+</div>
+
+<h1 id="實作-以-active-record-為例"><a href="#實作-以-active-record-為例" class="headerlink" title="實作(以 active_record 為例)"></a>實作(以 <code>active_record</code> 為例)</h1><h2 id="install"><a href="#install" class="headerlink" title="install"></a>install</h2><figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># In Your Gemfile.rb</span></span><br><span class="line">gem <span class="string">&#x27;flipper&#x27;</span></span><br><span class="line">gem <span class="string">&#x27;flipper-active_record&#x27;</span></span><br></pre></td></tr></table></figure>
+<p>請記得 <code>bundle</code>，接著使用<code>rails g flipper:active_record</code></p>
+<p>這會幫你 create 兩個 table</p>
+<ol>
+<li><code>flipper_features</code></li>
+<li><code>flipper_gates</code><figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">CreateFlipperTables</span> &lt; ActiveRecord::Migration[6.1]</span></span><br><span class="line">  def <span class="keyword">self</span>.up</span><br><span class="line">    create_table <span class="symbol">:flipper_features</span> <span class="keyword">do</span> <span class="params">|t|</span></span><br><span class="line">      t.string <span class="symbol">:key</span>, <span class="symbol">null:</span> <span class="literal">false</span> <span class="comment">#  feature 的名稱</span></span><br><span class="line">      t.timestamps <span class="symbol">null:</span> <span class="literal">false</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    add_index <span class="symbol">:flipper_features</span>, <span class="symbol">:key</span>, <span class="symbol">unique:</span> <span class="literal">true</span></span><br><span class="line"></span><br><span class="line">    create_table <span class="symbol">:flipper_gates</span> <span class="keyword">do</span> <span class="params">|t|</span></span><br><span class="line">      t.string <span class="symbol">:feature_key</span>, <span class="symbol">null:</span> <span class="literal">false</span> <span class="comment"># feature 的名稱</span></span><br><span class="line">      t.string <span class="symbol">:key</span>, <span class="symbol">null:</span> <span class="literal">false</span> <span class="comment"># 控制開關的 type</span></span><br><span class="line">      t.string <span class="symbol">:value</span>	      <span class="comment"># 隨著 type 不一樣有不一樣的值</span></span><br><span class="line">      t.timestamps <span class="symbol">null:</span> <span class="literal">false</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">    add_index <span class="symbol">:flipper_gates</span>, [<span class="symbol">:feature_key</span>, <span class="symbol">:key</span>, <span class="symbol">:value</span>], <span class="symbol">unique:</span> <span class="literal">true</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  def <span class="keyword">self</span>.down</span><br><span class="line">    drop_table <span class="symbol">:flipper_gates</span></span><br><span class="line">    drop_table <span class="symbol">:flipper_features</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+記得 migration!<div class="note info"><p><code>flipper_features</code> 只記有哪些開關，<code>flipper_gates</code> 記你要怎麼控制這個開關</p>
+</div>
+
+</li>
+</ol>
+<p>到這邊其實已經可以直接在 console 使用 feature_toggle 的功能了。</p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># rails console</span></span><br><span class="line">Flipper.enable(<span class="symbol">:search</span>) <span class="comment"># 會幫你直接加入資料</span></span><br><span class="line"><span class="comment"># 可以使用下方來查看你的開關。</span></span><br><span class="line">pp Flipper::Adapters::ActiveRecord::Feature.all</span><br><span class="line"><span class="comment"># [#&lt;Flipper::Adapters::ActiveRecord::Feature:0x00007f97e8f05cd0</span></span><br><span class="line"><span class="comment">#   id: 1,</span></span><br><span class="line"><span class="comment">#   key: &quot;search&quot;,</span></span><br><span class="line"><span class="comment">#   created_at: Sat, 31 Jul 2021 06:20:03.158525000 UTC +00:00,</span></span><br><span class="line"><span class="comment">#   updated_at: Sat, 31 Jul 2021 06:20:03.158525000 UTC +00:00&gt;]</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 下方可以看到你控制開關的方式(要 enable才會 create 資料，disable 就刪掉資料)</span></span><br><span class="line">pp Flipper::Adapters::ActiveRecord::Gate.all</span><br><span class="line"><span class="comment"># [#&lt;Flipper::Adapters::ActiveRecord::Gate:0x00007f97e8e6e920</span></span><br><span class="line"><span class="comment">#   id: 1,</span></span><br><span class="line"><span class="comment">#   feature_key: [FILTERED],</span></span><br><span class="line"><span class="comment">#   key: &quot;boolean&quot;,</span></span><br><span class="line"><span class="comment">#   value: &quot;true&quot;,</span></span><br><span class="line"><span class="comment">#   created_at: Sat, 31 Jul 2021 06:26:55.841467000 UTC +00:00,</span></span><br><span class="line"><span class="comment">#   updated_at: Sat, 31 Jul 2021 06:26:55.841467000 UTC +00:00&gt;]</span></span><br></pre></td></tr></table></figure>
+<p>不過要在 controller 中調用 Flipper 的方法，必須先 initialize，或者直接建立一份檔案，放在 <code>lib/</code> 中</p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># config/initializers/flipper/feature.rb</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># initializer</span></span><br><span class="line">Flipper.configure <span class="keyword">do</span> <span class="params">|config|</span></span><br><span class="line">  config.adapter &#123; Flipper::Adapters::ActiveRecord.new &#125;</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 初始化的時候就設定 group</span></span><br><span class="line">Flipper.register(<span class="symbol">:admins</span>) &#123; <span class="params">|thing|</span> thing.admin? &#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="UI"><a href="#UI" class="headerlink" title="UI"></a>UI</h2><figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># In Your Gemfile.rb</span></span><br><span class="line">gem <span class="string">&#x27;flipper-ui&#x27;</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li><p>記得 <code>bundle</code>，接著設定你的 router!</p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># config/routes.rb</span></span><br><span class="line">YourRailsApp::Application.routes.draw <span class="keyword">do</span></span><br><span class="line">  mount Flipper::UI.app(Flipper) =&gt; <span class="string">&#x27;/flipper&#x27;</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>若要依賴 devise 設定權限，example:</p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># initializers/admin_access.rb</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">CanAccessFlipperUI</span></span></span><br><span class="line">  def <span class="keyword">self</span>.matches?(request)</span><br><span class="line">    current_user = request.env[<span class="string">&#x27;warden&#x27;</span>].user</span><br><span class="line">    current_user.present? &amp;&amp; current_user.respond_to?(<span class="symbol">:admin?</span>) &amp;&amp; current_user.admin?</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># config/routes.rb</span></span><br><span class="line"></span><br><span class="line">constraints CanAccessFlipperUI <span class="keyword">do</span></span><br><span class="line">  mount Flipper::UI.app(Flipper) =&gt; <span class="string">&#x27;/flipper&#x27;</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>或是直接使用 devise_group 做輔助</p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line">devise_scope <span class="symbol">:admin</span> <span class="keyword">do</span></span><br><span class="line">  authenticated <span class="symbol">:admin</span> <span class="keyword">do</span></span><br><span class="line">    mount Flipper::UI.app(Flipper) =&gt; <span class="string">&#x27;/flipper&#x27;</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>UI 的部分可以只能稍微客製化，彈性不大</p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># config/initializers/flipper_ui_config.rb</span></span><br><span class="line"><span class="keyword">require</span> <span class="string">&#x27;flipper/ui&#x27;</span></span><br><span class="line"></span><br><span class="line">Flipper::UI.configure <span class="keyword">do</span> <span class="params">|config|</span></span><br><span class="line">  config.banner_text = <span class="string">&#x27;Production Environment&#x27;</span></span><br><span class="line">  config.banner_class = <span class="string">&#x27;danger&#x27;</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<div class="note info"><p>由於沒有生出任何的檔案讓你做修改，所以要客製化，只能在 <code>config/initializers/</code> 裡新增檔案，在檔案裡 <code>require flipper/**</code> 的相關檔案才能進行設定。<strong>也就是改一次就要關一次 server 喔</strong></p>
+</div>
+
+
+</li>
+</ul>
+<h2 id="Flipper-控制開關的方法-Gates"><a href="#Flipper-控制開關的方法-Gates" class="headerlink" title="Flipper 控制開關的方法 Gates"></a>Flipper 控制開關的方法 Gates</h2><blockquote>
+<p>flipper_gates 的 key</p>
+</blockquote>
+<h3 id="Boolean"><a href="#Boolean" class="headerlink" title="Boolean"></a>Boolean</h3><ul>
+<li>只有開跟關的選項<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line">Flipper.enable(<span class="symbol">:search</span>)</span><br><span class="line">Flipper.enabled?(<span class="symbol">:search</span>) <span class="comment"># true</span></span><br></pre></td></tr></table></figure>
+<h3 id="group"><a href="#group" class="headerlink" title="group"></a>group</h3></li>
+<li>先製作好 group<ul>
+<li>使用 <code>Flipper.register(:admins) &#123; |thing| thing.admin? &#125;</code>，<strong>所以你的 thing 要有 admin? 這個方法可以用</strong></li>
+<li>就可以直接使用 <code>Flipper.enabled?(:feature_name, current_user)</code> 去做判斷。<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line">Flipper.register(<span class="symbol">:admins</span>) &#123; <span class="params">|thing|</span> thing.admin? &#125;</span><br><span class="line"></span><br><span class="line">Flipper.enabled?(<span class="symbol">:feature_name</span>, admin_user) <span class="comment"># true</span></span><br><span class="line">Flipper.enabled?(<span class="symbol">:feature_name</span>, non_admin_user) <span class="comment">#false</span></span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="actor"><a href="#actor" class="headerlink" title="actor"></a>actor</h3><ul>
+<li>直接使用 <code>flipper_id</code> 指定誰(ex. <code>user</code>、<code>company</code>)可以過開關，<strong>請記得一定要有 flipper_id 這個方法可以用，因為 gates 是認這個！</strong><figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># model/user.rb</span></span><br><span class="line">alias_method <span class="symbol">:flipper_id</span>, <span class="symbol">:id</span></span><br></pre></td></tr></table></figure>
+<div class="note info"><p>實作起來的實際狀況：<br>就算沒有設定<code>flipper_id</code> 這個方法，預設好像也是抓 <code>id</code>，但 value 那一格存的會是 <code>User;1</code>，有設定的話就會是你設定的 value</p>
+</div>
+
+</li>
+</ul>
+<h3 id="百分比模式"><a href="#百分比模式" class="headerlink" title="百分比模式"></a>百分比模式</h3><h4 id="percentage-of-actors"><a href="#percentage-of-actors" class="headerlink" title="percentage_of_actors"></a><code>percentage_of_actors</code></h4><ul>
+<li>設定為整個系統中，多少百分比 的 actors 打開</li>
+<li>不過要這樣用的話一定要加 <code>alias_method :flipper_id, :id</code>，在你要控制的 model 裡</li>
+<li>每個功能應該要只有一種 actor<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line">Flipper.enable <span class="symbol">:feature_name</span>, Flipper.actors(<span class="number">10</span>)</span><br><span class="line"><span class="comment"># or</span></span><br><span class="line">Flipper.enable_percentage_of_actors <span class="symbol">:feature_name</span>, <span class="number">10</span></span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h4 id="percentage-of-time"><a href="#percentage-of-time" class="headerlink" title="percentage_of_time"></a><code>percentage_of_time</code></h4><ul>
+<li>用機率的方式決定是否開啟功能。<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 不論是否有給第二個參數，皆有 25% 機率為 true</span></span><br><span class="line">Flipper.enable_percentage_of_time(<span class="symbol">:new_feature</span>, <span class="number">25</span>)</span><br><span class="line"></span><br><span class="line">Flipper.enabled?(<span class="symbol">:new_feature</span>) <span class="comment"># 25% 機率為 true </span></span><br><span class="line">Flipper.enabled?(<span class="symbol">:new_feature</span>, user)<span class="comment"># 25% 機率為 true</span></span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h1 id="總結"><a href="#總結" class="headerlink" title="總結"></a>總結</h1><p>feature_toggle 雖然好用，但請記得：</p>
+<ol>
+<li>toggle 太多，會不好維護 =&gt; 你可能要維護兩版。</li>
+<li>toggle 的功能粒度太大，但能控制的細節是有限的，請維持適中的粒度大小</li>
+<li>每個 toggle 的功能，盡量不要耦合到其他 toggle 的功能，請別搞死自己XD”</li>
+<li>還是會有搞爆 production 的風險啊！</li>
+</ol>
+<h2 id="規範可參考-gitLab-的-使用原則"><a href="#規範可參考-gitLab-的-使用原則" class="headerlink" title="規範可參考 gitLab 的 使用原則"></a>規範可參考 <a href="https://docs.gitlab.com/ee/development/feature_flags/">gitLab 的 使用原則</a></h2><p><img src="https://i.imgur.com/BGH0MiZ.png"></p>
+<h1 id="參考文章"><a href="#參考文章" class="headerlink" title="參考文章"></a>參考文章</h1><ol>
+<li><a href="https://itw01.com/5JWE4D6.html">Feature Flag 功能釋出控制</a></li>
+<li><a href="https://mileschou.github.io/blog/feature-toggle-faq/">Feature Toggle 應用常見問題</a></li>
+<li><a href="https://www.flippercloud.io/docs#features">Flipper Cloud</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>Ruby on Rails</category>
+      </categories>
+      <tags>
+        <tag>feature_toggle</tag>
+        <tag>Ruby on Rails</tag>
       </tags>
   </entry>
 </search>

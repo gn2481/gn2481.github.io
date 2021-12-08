@@ -2,7 +2,7 @@
 <search>
   <entry>
     <title>Rails 中 includes 跟 joins 的差別</title>
-    <url>/2021/02/25/Rails-%E4%B8%AD-includes-%E8%B7%9F-joins-%E7%9A%84%E5%B7%AE%E5%88%A5/</url>
+    <url>/2021/02/25/diffence_between_includes_and_joins/</url>
     <content><![CDATA[<h1 id="Rails-中-includes-跟-joins-的差別"><a href="#Rails-中-includes-跟-joins-的差別" class="headerlink" title="Rails 中 includes 跟 joins 的差別"></a>Rails 中 <code>includes</code> 跟 <code>joins</code> 的差別</h1><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>最近幫忙在調校網站 n+1 的問題，所以想來寫個筆記，分成兩篇。</p>
 <ol>
 <li><a href="">Rails 中 <code>includes</code> 跟 <code>joins</code> 的差別</a></li>
@@ -46,7 +46,7 @@
   </entry>
   <entry>
     <title>Feature Toggles</title>
-    <url>/2021/08/09/Feature-Toggles/</url>
+    <url>/2021/08/09/feature_toggles/</url>
     <content><![CDATA[<h1 id="什麼是-feature-toggle？"><a href="#什麼是-feature-toggle？" class="headerlink" title="什麼是 feature toggle？"></a>什麼是 feature toggle？</h1><p>若一個功能要成功上線需有：<br><img src="https://i.imgur.com/ikSwJjG.png"></p>
 <hr>
 <p>一般開發方式大致分成下面幾種：</p>
@@ -174,7 +174,56 @@
         <category>Ruby on Rails</category>
       </categories>
       <tags>
+        <tag>Ruby on Rails</tag>
         <tag>feature_toggle</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Single-table inheritance And Polymorphic</title>
+    <url>/2021/12/08/single_table_inheritance_and_polymorphic/</url>
+    <content><![CDATA[<h1 id="STI-與-多型關聯-的-combo-技"><a href="#STI-與-多型關聯-的-combo-技" class="headerlink" title="STI 與 多型關聯 的 combo 技"></a>STI 與 多型關聯 的 combo 技</h1><h3 id="先來假設一個情境"><a href="#先來假設一個情境" class="headerlink" title="先來假設一個情境"></a>先來假設一個情境</h3><p>使用者可以訂閱不同的方案，年繳或月繳之類的</p>
+<h2 id="1-單一表格繼承-STI-Single-table-inheritance"><a href="#1-單一表格繼承-STI-Single-table-inheritance" class="headerlink" title="1. 單一表格繼承 STI (Single-table inheritance)"></a>1. <strong>單一表格繼承 STI</strong> (Single-table inheritance)</h2><ol>
+<li><code>YearPlan</code> 和 <code>MonthPlan</code> <code>共用，Plan</code> 這個 <code>table</code></li>
+</ol>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># Table name: plans</span></span><br><span class="line"><span class="comment">#  id                :bigint           not null, primary key</span></span><br><span class="line"><span class="comment">#  type              :string(191)      not null</span></span><br><span class="line"><span class="comment">#  status            :integer          default(&quot;pending&quot;)</span></span><br><span class="line"><span class="comment">#  amount            :integer</span></span><br><span class="line"><span class="comment">#  created_at        :datetime         not null</span></span><br><span class="line"><span class="comment">#  updated_at        :datetime         not null</span></span><br></pre></td></tr></table></figure>
+
+<p>STI 單一表格繼承，會根據你使用建立的 <code>model</code> 在 <code>plans</code> 的這個 <code>table</code> 的 <code>type</code> 中紀錄 <code>model_name</code></p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># model/plan.rb</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Plan</span> &lt; ApplicationRecord</span></span><br><span class="line">  <span class="comment"># do_something</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># model/foo_plan.rb</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">YearPlan</span> &lt; Plan</span></span><br><span class="line">  <span class="comment"># do_something</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># model/boo_plan.rb</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MonthPlan</span> &lt; Plan</span></span><br><span class="line">  <span class="comment"># do_something</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>ex. </p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="comment"># rails console</span></span><br><span class="line">YearPlan.create!(<span class="symbol">amount:</span> <span class="number">999</span>, <span class="symbol">status:</span> <span class="string">&quot;active&quot;</span>)</span><br><span class="line"></span><br><span class="line">MonthPlan.create!(<span class="symbol">amount:</span> <span class="number">99</span>, <span class="symbol">status:</span> <span class="string">&quot;active&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>這樣的情況，會在 <code>plans</code> 的 <code>table</code> 中 建立一筆 <code>type</code> 分別為 <code>&quot;YearPlan&quot;</code>、<code>&quot;MonthPlan&quot;</code> 的 record<br><img src="https://i.imgur.com/715jUoM.png"></p>
+<p>而在 console <code>YearPlan.last</code>，只是去 <code>Plans</code> 這個 <code>table</code> 找<br><img src="https://i.imgur.com/GdAzqgL.png"></p>
+<div class="note info"><p>因為這個功能，在 rails 裡，column 的名字不能亂取成 type</p>
+</div>
+<h2 id="2-多型關聯-polymorphic"><a href="#2-多型關聯-polymorphic" class="headerlink" title="2. 多型關聯 polymorphic"></a>2. 多型關聯 polymorphic</h2><p>先假設另外一個單純的情境來講 polymorphic，以 <a href="https://ihower.tw/rails/activerecord-relationships.html">Rails實戰聖經</a>裡面的例子，airtcle、photo 都可以被 comment<br>所以 comment 可以用多型的關係指向不同的 model 關聯。</p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Comment</span> &lt; ApplicationRecord</span></span><br><span class="line">  belongs_to <span class="symbol">:commentable</span>, <span class="symbol">polymorphic:</span> <span class="literal">true</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Article</span> &lt; ApplicationRecord</span></span><br><span class="line">  has_many <span class="symbol">:comments</span>, <span class="symbol">as:</span> <span class="symbol">:commentable</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Photo</span> &lt; ApplicationRecord</span></span><br><span class="line">  has_many <span class="symbol">:comments</span>, <span class="symbol">as:</span> <span class="symbol">:commentable</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line">article = Article.first</span><br><span class="line"></span><br><span class="line"><span class="comment"># 透過關連新增留言</span></span><br><span class="line">comment = article.comments.create(<span class="symbol">:content</span> =&gt; <span class="string">&quot;First Comment&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 你可以發現 Rails 很聰明的幫我們指定了被留言物件的種類和id</span></span><br><span class="line">comment.commentable_type =&gt; <span class="string">&quot;Article&quot;</span></span><br><span class="line">comment.commentable_id =&gt; <span class="number">1</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 也可以透過 commentable 反向回查關連的物件</span></span><br><span class="line">comment.commentable =&gt; #&lt;Article id: 1, ....&gt;</span><br></pre></td></tr></table></figure>
+<div class="note warning"><p>到這裡我一直都認為，在寫入的 <code>commentable_type</code> ，是去抓取物件的 model(class) name，直到他與 STI 相遇了……</p>
+</div>
+
+<h2 id="回到-STI-與-polymorphic"><a href="#回到-STI-與-polymorphic" class="headerlink" title="回到 STI 與 polymorphic"></a>回到 STI 與 polymorphic</h2><p>使用者可以分別訂閱不同的方案，但其實可以開成一個 model 就好。</p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Subscription</span> &lt; ApplicationRecord</span></span><br><span class="line">  belongs_to <span class="symbol">:planable</span>, <span class="symbol">polymorphic:</span> <span class="literal">true</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Table name: subscriptions</span></span><br><span class="line"><span class="comment">#</span></span><br><span class="line"><span class="comment">#  id                       :bigint           not null, primary key</span></span><br><span class="line"><span class="comment">#  planable_type            :string(191)</span></span><br><span class="line"><span class="comment">#  planable_id              :integer</span></span><br><span class="line"><span class="comment">#  status                   :integer          default(&quot;active&quot;)</span></span><br><span class="line"><span class="comment">#  created_at               :datetime         not null</span></span><br><span class="line"><span class="comment">#  updated_at               :datetime         not null</span></span><br></pre></td></tr></table></figure>
+
+<p>這樣的情況預期可以讓 <code>Subscription</code> 根據 <code>planable</code> 帶進來的 <code>record</code> 去找到相關連的 <code>object</code></p>
+<figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line">my_plan = YearPlan.last</span><br><span class="line"></span><br><span class="line">record = Subscription.create!(<span class="symbol">planable:</span> my_plan, <span class="symbol">status:</span> <span class="string">&quot;active&quot;</span>)</span><br></pre></td></tr></table></figure>
+<p><img src="https://i.imgur.com/55rWh04.png"></p>
+<p>接著讓我們來看看 這個 record</p>
+<p><img src="https://i.imgur.com/ZVlpdzx.png"></p>
+<p><code>planable_type</code> 寫的是 寫的是 <code>Plan</code> ，不是 <code>YearPlan</code> ，所以看起來是去抓他的 <code>table_name</code>，要注意！</p>
+<h2 id="💡-解法"><a href="#💡-解法" class="headerlink" title="💡 解法"></a>💡 解法</h2><figure class="highlight ruby"><table><tr><td class="code"><pre><span class="line">before_validation <span class="symbol">:set_type</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">set_type</span></span></span><br><span class="line">  <span class="keyword">self</span>.planable_type = planable.<span class="keyword">class</span>.name</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>若有任何指教，歡迎留言給我。🙏</p>
+<h3 id="參考資料"><a href="#參考資料" class="headerlink" title="參考資料"></a>參考資料</h3><ol>
+<li><a href="https://stackoverflow.com/questions/9628610/why-polymorphic-association-doesnt-work-for-sti-if-type-column-of-the-polymorph">stack over flow</a></li>
+<li><a href="https://ihower.tw/rails/activerecord-relationships.html">Rails實戰聖經</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>Ruby on Rails</category>
+      </categories>
+      <tags>
         <tag>Ruby on Rails</tag>
       </tags>
   </entry>
